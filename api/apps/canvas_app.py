@@ -13,6 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+import base64
 import json
 import logging
 import re
@@ -78,7 +79,8 @@ def save():
     req["user_id"] = current_user.id
     if not isinstance(req["dsl"], str):
         req["dsl"] = json.dumps(req["dsl"], ensure_ascii=False)
-    req["dsl"] = json.loads(req["dsl"])
+    # req["dsl"] = json.loads(req["dsl"])
+    req["dsl"] = json.loads(base64.b64decode(req["dsl"]).decode('utf-8'))
     if "id" not in req:
         if UserCanvasService.query(user_id=current_user.id, title=req["title"].strip()):
             return get_data_error_result(message=f"{req['title'].strip()} already exists.")

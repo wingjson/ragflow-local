@@ -137,39 +137,83 @@ export const useFetchVersion = (
   return { data, loading };
 };
 
-export const useFetchFlow = (): {
-  data: IFlow;
-  loading: boolean;
-  refetch: () => void;
-} => {
-  const { id } = useParams();
-  const { sharedId } = useGetSharedChatSearchParams();
-
+export const useSetFlow = () => {
+  const queryClient = useQueryClient();
   const {
     data,
-    isFetching: loading,
-    refetch,
-  } = useQuery({
-    queryKey: ['flowDetail'],
-    initialData: {} as IFlow,
-    refetchOnReconnect: false,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-    gcTime: 0,
-    queryFn: async () => {
-      const { data } = await flowService.getCanvas({}, sharedId || id);
+    isPending: loading,
+    mutateAsync,
+  } = useMutation({
+    mutationKey: ['setFlow'],
+    mutationFn: async (params: {
+      id?: string;
+      title?: string;
+      dsl?: DSL;
+      avatar?: string;
+    }) => {
+      console.log(params.dsl);
+      const uint8ArrayToString = (uint8Array) => {
+        const chunkSize = 0x8000; // 每次处理 32KB 的数据
+        let result = '';
+        for (let i = 0; i < uint8Array.length; i += chunkSize) {
+          const chunk = uint8Array.subarray(i, i + chunkSize);
+          result += String.fromCharCode(...chunk);
+        }
+        return result;
+      };
 
-      const messageList = buildMessageListWithUuid(
-        get(data, 'data.dsl.messages', []),
-      );
-      set(data, 'data.dsl.messages', messageList);
-
-      return data?.data ?? {};
+      const jsonString = JSON.stringify(params.dsl); // JSON 对象序列化为字符串
+      const utf8Bytes = new TextEncoder().encode(jsonString); // 编码为 Uint8Array
+      params.dsl = btoa(uint8ArrayToString(utf8Bytes)); // 转换为 Base64 编码
+      console.log('🚀 ~ useSetFlow ~ params', params);
+      // return;
+      const { data = {} } = await flowService.setCanvas(params);
+      if (data.code === 0) {
+        message.success(
+          i18n.t(`message.${params?.id ? 'modified' : 'created'}`),
+        );
+        queryClient.invalidateQueries({ queryKey: ['fetchFlowList'] });
+      }
+      return data;
     },
   });
 
-  return { data, loading, refetch };
+  return { data, loading, setFlow: mutateAsync };
 };
+
+// export const useFetchFlow = (): {
+//   data: IFlow;
+//   loading: boolean;
+//   refetch: () => void;
+// } => {
+//   const { id } = useParams();
+//   const { sharedId } = useGetSharedChatSearchParams();
+
+//   const {
+//     data,
+//     isFetching: loading,
+//     refetch,
+//   } = useQuery({
+//     queryKey: ['flowDetail'],
+//     initialData: {} as IFlow,
+//     refetchOnReconnect: false,
+//     refetchOnMount: false,
+//     refetchOnWindowFocus: false,
+//     gcTime: 0,
+//     queryFn: async () => {
+//       const { data } = await flowService.getCanvas({}, sharedId || id);
+
+//       const messageList = buildMessageListWithUuid(
+//         get(data, 'data.dsl.messages', []),
+//       );
+//       set(data, 'data.dsl.messages', messageList);
+
+//       return data?.data ?? {};
+//     },
+//   });
+
+//   return { data, loading, refetch };
+// };
 
 export const useSettingFlow = () => {
   const {

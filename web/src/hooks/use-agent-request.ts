@@ -280,6 +280,19 @@ export const useSetAgent = (showMessage: boolean = true) => {
       dsl?: DSL;
       avatar?: string;
     }) => {
+      const uint8ArrayToString = (uint8Array) => {
+        const chunkSize = 0x8000;
+        let result = '';
+        for (let i = 0; i < uint8Array.length; i += chunkSize) {
+          const chunk = uint8Array.subarray(i, i + chunkSize);
+          result += String.fromCharCode(...chunk);
+        }
+        return result;
+      };
+
+      const jsonString = JSON.stringify(params.dsl);
+      const utf8Bytes = new TextEncoder().encode(jsonString);
+      params.dsl = btoa(uint8ArrayToString(utf8Bytes));
       const { data = {} } = await agentService.setCanvas(params);
       if (data.code === 0) {
         if (showMessage) {
